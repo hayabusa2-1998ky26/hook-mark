@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>rbCanvas/p5</title>
+<!-- rbCanvas/p5 editor v0.5.1 -->
+</head>
+<body>
+<script type="text/javascript" src="https://rbcanvas.net/p5/0.5.1/runtime/opal/opal_patched.min.js"></script>
+<script type="text/javascript" src="https://rbcanvas.net/p5/0.5.1/runtime/opal/opal-parser_patched.min.js" onload="Opal.load('opal-parser'); Opal.load('parser/ruby31');"></script>
+<script type="text/javascript" src="https://rbcanvas.net/p5/0.5.1/runtime/opal/native.min.js" onload="Opal.load('native')"></script>
+<script type="text/javascript" src="https://rbcanvas.net/p5/0.5.1/runtime/opal/date.min.js" onload="Opal.load('date')"></script>
+<script type="text/javascript" src="https://rbcanvas.net/p5/0.5.1/runtime/p5/p5.min.js"></script>
+<script type="text/javascript" src="https://rbcanvas.net/p5/0.5.1/runtime/rbcanvasp5/rbcanvasp5.js"></script>
+<script type="text/ruby" section="s00" name="main">
+$PROGRAM_NAME = "main"
+# 初期設定用のコード (your setup code here)
+def setup
+  $maps = []
+  maps_sizes = [21, 21]
+  for y in 0..maps_sizes[0] - 1
+    $maps.push([])
+    for x in 0..maps_sizes[1] - 1
+      $maps[y].push(0)
+    end
+  end
+  $size = 40
+  $size_goal = 40
+  $key = ""
+  $cursol_x = ((maps_sizes[0] - 1) / 2).to_i
+  $cursol_y = ((maps_sizes[1] - 1) / 2).to_i
+  $cursol_x_real = $cursol_x
+  $cursol_y_real = $cursol_y
+  $cx = $cursol_x - $size
+  $cy = 0
+  $cursol_size = 0
+  $cursol_size_goal = 0
+  $turn = 1
+  $winner = nil
+  $near_misses = []
+  $won = []
+end
+
+def change_turn
+  if $turn == 1
+    $turn = 2
+  else
+    $turn = 1
+  end
+end
+
+def rotate_hook_mark(hook_mark)
+  rotated_hook_mark = []
+  for i in 0..hook_mark.length - 1
+    rotated_hook_mark.push([hook_mark[i][1] * -1, hook_mark[i][0]])
+  end
+  
+  rotated_hook_mark.transpose
+  
+  x_min = rotated_hook_mark[0].min
+  y_min = rotated_hook_mark[1].min
+  
+  rotated_hook_mark[0].map{|x| x - x_min}
+  rotated_hook_mark[1].map{|y| y - y_min}
+  
+  rotated_hook_mark.transpose
+  return rotated_hook_mark
+end
+
+def win_judge
+  hook_mark = [[0, 1], [0, 2], [1, 0], [2, 1], [3, 1]]
+  winner = nil
+  near_miss = nil
+  near_misses = []
+  won = []
+  for j in 1..4
+    hook_mark = rotate_hook_mark(hook_mark)
+    for y in 0..$maps.length - 1
+      for x in 0..$maps[y].length - 1
+        judge = true
+        miss = 0
+        looking_mark = 0
+        near_miss = []
+        
+        for i in 0..hook_mark.length - 1
+          h_x, h_y = hook_mark[i][0] + x, hook_mark[i][1] + y
+          
+          if h_x < 0 or h_y < 0 or $maps[0].length - 1 < h_x or $maps.length - 1 < h_y
+            judge = false
+            miss = 0
+            break
+          end
+          
+          if looking_mark == 0
+            if $maps[h_y][h_x] == 0
+              judge = false
+            else
+              looking_mark = $maps[h_y][h_x]
+            end
+          end
+          
+          if $maps[h_y][h_x] != looking_mark or $maps[h_y][h_x] == 0
+            judge = false
+            miss += 1
+            if miss == 1
+              near_miss = [looking_mark, h_x, h_y]
+            end
+          end
+          
+        end
+        
+        if judge == true
+          winner = looking_mark
+          won = hook_mark.map{|l| [l[0] + x, l[1] + y]}
+          break
+        end
+        
+        if miss == 1
+          near_misses.push(near_miss)
+        end
+      end
+    end
+  end
+  
+  return winner, near_misses, won
+end
+
+# 画面描画用のコード (your draw code here)
+def draw
+  ww = windowWidth
+  wh = windowHeight
+  
+  createCanvas(ww - 10, wh - 10)
+  background(220)
+  
+  $cursol_x += ($cursol_x_real - $cursol_x) * 0.2
+  $cursol_y += ($cursol_y_real - $cursol_y) * 0.2
+  $size += ($size_goal - $size) * 0.3
+  
+  if $cursol_x - $cx > ww / $size - 2
+    $cx = $cursol_x - (ww / $size - 2)
+  end
+  
+  if $cursol_y - $cy > wh / $size - 2
+    $cy = $cursol_y - (wh / $size - 2)
+  end
+  
+  if $cursol_x - $cx < 1
+    $cx = $cursol_x - 1
+  end
+  
+  if $cursol_y - $cy < 1
+    $cy = $cursol_y - 1
+  end
+  
+  if $cursol_x_real < 0
+    $cursol_x_real = 0
+  end
+  
+  if $cursol_y_real < 0
+    $cursol_y_real = 0
+  end
+  
+  if $maps[0].length - 1 < $cursol_x_real
+    $cursol_x_real = $maps[0].length - 1
+  end
+  
+  if $maps.length - 1 < $cursol_y_real
+    $cursol_y_real = $maps.length - 1
+  end
+  
+  if $cursol_x_real > $maps[$cursol_y_real].length - 1
+    $cursol_x_real = $maps[$cursol_y_real].length - 1
+  end
+  
+  if $cursol_y_real > $maps.length - 1
+    $cursol_y_real = $maps.length - 1
+  end
+  
+  for y in 0..$maps.length - 1
+    for x in 0..$maps[y].length - 1
+      fill("white")
+      
+      if $won != nil and $won.include?([x, y])
+        if $winner == 1
+          fill("pink")
+        else
+          fill("skyblue")
+        end
+      end
+      
+      stroke("black")
+      strokeWeight($size * 0.05)
+      rect((x - $cx) * $size, (y - $cy) * $size, $size, $size)
+      case $maps[y][x]
+      when 1
+        noFill
+        stroke("red")
+        strokeWeight($size * 0.1)
+        circle((x - $cx + 0.5) * $size, (y - $cy + 0.5) * $size, $size * 0.6)
+      when 2
+        noFill
+        stroke("blue")
+        strokeWeight($size * 0.1)
+        line_size = 0.5
+        ls = (1 - line_size) / 2
+        line((x - $cx + ls) * $size, (y - $cy + ls) * $size, (x - $cx + 1 - ls) * $size, (y - $cy + 1 - ls) * $size)
+        line((x - $cx + ls) * $size, (y - $cy + 1 - ls) * $size, (x - $cx + 1 - ls) * $size, (y - $cy + ls) * $size)
+      end
+      
+      if $maps[y][x] == 0 and $near_misses.include?([1, x, y])
+        noFill
+        stroke("pink")
+        strokeWeight($size * 0.1)
+        circle((x - $cx + 0.5) * $size, (y - $cy + 0.5) * $size, $size * 0.6)
+      end
+      
+      if $maps[y][x] == 0 and $near_misses.include?([2, x, y])
+        noFill
+        stroke("skyblue")
+        strokeWeight($size * 0.1)
+        line_size = 0.5
+        ls = (1 - line_size) / 2
+        line((x - $cx + ls) * $size, (y - $cy + ls) * $size, (x - $cx + 1 - ls) * $size, (y - $cy + 1 - ls) * $size)
+        line((x - $cx + ls) * $size, (y - $cy + 1 - ls) * $size, (x - $cx + 1 - ls) * $size, (y - $cy + ls) * $size)
+      end
+    end
+  end
+  
+  $cursol_size_goal = 0
+  
+  case $key
+  when LEFT_ARROW
+    $cursol_x_real -= 1
+  when RIGHT_ARROW
+    $cursol_x_real += 1
+  when UP_ARROW
+    $cursol_y_real -= 1
+  when DOWN_ARROW
+    $cursol_y_real += 1
+  when 32
+    if $maps[$cursol_y_real][$cursol_x_real] == 0 and $winner == nil
+      $maps[$cursol_y_real][$cursol_x_real] = $turn
+      change_turn
+      $cursol_size = $size * -0.2
+    else
+      $cursol_size = $size * -0.05
+    end
+    $winner, $near_misses, $won = win_judge
+  when 187
+    $size_goal *= 1.1
+  when 189
+    $size_goal /= 1.1
+  end
+  
+  noFill
+  if $turn == 1
+    stroke("orangered")
+  else
+    stroke("royalblue")
+  end
+  strokeWeight($size * 0.1)
+  $cursol_size_goal += Math.sin(frameCount / 20) * $size * 0.04 + $size * 0.05
+  $cursol_size += ($cursol_size_goal - $cursol_size) * 0.3
+  pa = $cursol_size
+  rect(($cursol_x - $cx) * $size - pa, ($cursol_y - $cy) * $size - pa, $size + pa * 2, $size + pa * 2)
+
+  $key = ""
+end
+
+def keyPressed
+  $key = keyCode
+end
+
+$PROGRAM_NAME = "main"
+</script>
+
+</body>
+</html>

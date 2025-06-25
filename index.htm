@@ -16,6 +16,9 @@
 $PROGRAM_NAME = "main"
 # 初期設定用のコード (your setup code here)
 def setup
+  ww = windowWidth
+  wh = windowHeight
+  
   $maps = []
   maps_sizes = [21, 21]
   for y in 0..maps_sizes[0] - 1
@@ -24,15 +27,16 @@ def setup
       $maps[y].push(0)
     end
   end
-  $size = 40
-  $size_goal = 40
+  
+  $size = (ww + wh) / 20.0
+  $size_goal = $size
   $key = ""
   $cursol_x = ((maps_sizes[0] - 1) / 2).to_i
   $cursol_y = ((maps_sizes[1] - 1) / 2).to_i
   $cursol_x_real = $cursol_x
   $cursol_y_real = $cursol_y
-  $cx = $cursol_x - $size
-  $cy = 0
+  $cx = $cursol_x - (ww / $size) / 2.0 + 0.5
+  $cy = $cursol_y - (wh / $size) / 2.0 + 0.5
   $cursol_size = 0
   $cursol_size_goal = 0
   $turn = 1
